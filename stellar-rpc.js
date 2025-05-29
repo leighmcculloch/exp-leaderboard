@@ -2,6 +2,31 @@
  * Stellar RPC Client for leaderboard functionality
  */
 
+// Initialize stellar-xdr-json library
+let stellarXdrInitialized = false;
+let stellarXdrInitPromise = null;
+
+async function initializeStellarXdr() {
+    if (stellarXdrInitialized) {
+        return;
+    }
+    
+    if (stellarXdrInitPromise) {
+        return stellarXdrInitPromise;
+    }
+    
+    stellarXdrInitPromise = (async () => {
+        if (typeof stellar_xdr_json !== 'undefined') {
+            await stellar_xdr_json.init();
+            stellarXdrInitialized = true;
+        } else {
+            throw new Error('stellar_xdr_json library not loaded');
+        }
+    })();
+    
+    return stellarXdrInitPromise;
+}
+
 class StellarRPCClient {
     constructor(rpcUrl = 'https://soroban-testnet.stellar.org:443') {
         this.rpcUrl = rpcUrl;
@@ -43,6 +68,9 @@ class StellarRPCClient {
 
     async checkContractDeployed(contractAddress) {
         try {
+            // Initialize stellar-xdr-json if not already done
+            await initializeStellarXdr();
+            
             // Create the contract instance key in JSON format
             const keyJson = {
                 contractData: {
@@ -55,7 +83,7 @@ class StellarRPCClient {
             };
 
             // Convert to XDR using stellar-xdr-json
-            const keyXdr = StellarXdrJson.encode('LedgerKey', keyJson);
+            const keyXdr = stellar_xdr_json.encode('LedgerKey', keyJson);
             
             const result = await this.makeRPCCall('getLedgerEntries', {
                 keys: [keyXdr]
@@ -71,6 +99,9 @@ class StellarRPCClient {
 
     async getContractWasm(contractAddress) {
         try {
+            // Initialize stellar-xdr-json if not already done
+            await initializeStellarXdr();
+            
             // First get the contract instance to find the wasm hash
             // Create the contract instance key in JSON format
             const keyJson = {
@@ -84,7 +115,7 @@ class StellarRPCClient {
             };
 
             // Convert to XDR using stellar-xdr-json
-            const keyXdr = StellarXdrJson.encode('LedgerKey', keyJson);
+            const keyXdr = stellar_xdr_json.encode('LedgerKey', keyJson);
             
             const instanceResult = await this.makeRPCCall('getLedgerEntries', {
                 keys: [keyXdr]
@@ -95,7 +126,7 @@ class StellarRPCClient {
             }
 
             // Decode the XDR response
-            const instanceData = StellarXdrJson.decode('LedgerEntryData', instanceResult.entries[0].xdr);
+            const instanceData = stellar_xdr_json.decode('LedgerEntryData', instanceResult.entries[0].xdr);
             // This would need proper XDR parsing in a real implementation
             // For now, we'll simulate the check
             return null; // Placeholder - would return actual wasm data
@@ -155,11 +186,14 @@ class StellarRPCClient {
 
     async checkSoroswapPair(contractAddress) {
         try {
+            // Initialize stellar-xdr-json if not already done
+            await initializeStellarXdr();
+            
             // Build the transaction in JSON format first
             const transactionJson = this.buildGetPairTransactionJson(contractAddress);
             
             // Convert to XDR using stellar-xdr-json
-            const transactionXdr = StellarXdrJson.encode('TransactionEnvelope', transactionJson);
+            const transactionXdr = stellar_xdr_json.encode('TransactionEnvelope', transactionJson);
             
             // Simulate a transaction to call get_pair function
             const result = await this.makeRPCCall('simulateTransaction', {
