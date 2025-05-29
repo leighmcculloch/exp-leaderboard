@@ -169,18 +169,34 @@ class StellarRPCClient {
             // Initialize stellar-xdr-json if not already done
             const xdr = await initializeStellarXdr();
             
-            // First get the contract instance to find the wasm hash
-            // Create the contract instance key in JSON format
-            const keyJson = {
-                contractData: {
-                    contract: contractAddress,
-                    key: 'instance',
-                    durability: 'persistent'
+            // Use the same pattern-based approach for LedgerKey
+            const keyPatterns = [
+                {
+                    contractData: {
+                        contract: contractAddress,
+                        key: 'instance',
+                        durability: 'persistent'
+                    }
+                },
+                {
+                    type: 'contractData',
+                    contractData: {
+                        contract: contractAddress,
+                        key: 'instance',
+                        durability: 'persistent'
+                    }
+                },
+                {
+                    contractData: {
+                        contract: { address: contractAddress },
+                        key: { type: 'instance' },
+                        durability: 'persistent'
+                    }
                 }
-            };
+            ];
 
-            // Convert to XDR using stellar-xdr-json
-            const keyXdr = xdr.encode('LedgerKey', keyJson);
+            console.log('Trying to encode LedgerKey for contract wasm:', contractAddress);
+            const keyXdr = await tryEncodeXDR(xdr, 'LedgerKey', keyPatterns, 'LedgerKey Contract Wasm');
             
             // Pass parameters in the correct format for getLedgerEntries
             const instanceResult = await this.makeRPCCall('getLedgerEntries', {
