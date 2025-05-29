@@ -43,16 +43,22 @@ class StellarRPCClient {
 
     async checkContractDeployed(contractAddress) {
         try {
+            // Create the contract instance key in JSON format
+            const keyJson = {
+                contractData: {
+                    contract: contractAddress,
+                    key: {
+                        type: 'instance'
+                    },
+                    durability: 'persistent'
+                }
+            };
+
+            // Convert to XDR using stellar-xdr-json
+            const keyXdr = StellarXdrJson.encode('LedgerKey', keyJson);
+            
             const result = await this.makeRPCCall('getLedgerEntries', {
-                keys: [{
-                    contractData: {
-                        contract: contractAddress,
-                        key: {
-                            type: 'instance'
-                        },
-                        durability: 'persistent'
-                    }
-                }]
+                keys: [keyXdr]
             });
 
             return result.entries && result.entries.length > 0;
@@ -66,24 +72,30 @@ class StellarRPCClient {
     async getContractWasm(contractAddress) {
         try {
             // First get the contract instance to find the wasm hash
+            // Create the contract instance key in JSON format
+            const keyJson = {
+                contractData: {
+                    contract: contractAddress,
+                    key: {
+                        type: 'instance'
+                    },
+                    durability: 'persistent'
+                }
+            };
+
+            // Convert to XDR using stellar-xdr-json
+            const keyXdr = StellarXdrJson.encode('LedgerKey', keyJson);
+            
             const instanceResult = await this.makeRPCCall('getLedgerEntries', {
-                keys: [{
-                    contractData: {
-                        contract: contractAddress,
-                        key: {
-                            type: 'instance'
-                        },
-                        durability: 'persistent'
-                    }
-                }]
+                keys: [keyXdr]
             });
 
             if (!instanceResult.entries || instanceResult.entries.length === 0) {
                 throw new Error('Contract instance not found');
             }
 
-            // Extract wasm hash from the instance data
-            const instanceData = instanceResult.entries[0];
+            // Decode the XDR response
+            const instanceData = StellarXdrJson.decode('LedgerEntryData', instanceResult.entries[0].xdr);
             // This would need proper XDR parsing in a real implementation
             // For now, we'll simulate the check
             return null; // Placeholder - would return actual wasm data
@@ -125,7 +137,7 @@ class StellarRPCClient {
                 filters: [{
                     type: 'contract',
                     contractIds: [contractAddress],
-                    topics: [['mint', 'Mint']] // Common mint event topics
+                    topics: [['mint', '*']] // Common mint event topics
                 }],
                 startLedger: twoDaysAgo,
                 pagination: {
@@ -143,13 +155,24 @@ class StellarRPCClient {
 
     async checkSoroswapPair(contractAddress) {
         try {
+            // Build the transaction in JSON format first
+            const transactionJson = this.buildGetPairTransactionJson(contractAddress);
+            
+            // Convert to XDR using stellar-xdr-json
+            const transactionXdr = StellarXdrJson.encode('TransactionEnvelope', transactionJson);
+            
             // Simulate a transaction to call get_pair function
             const result = await this.makeRPCCall('simulateTransaction', {
-                transaction: this.buildGetPairTransaction(contractAddress)
+                transaction: transactionXdr
             });
 
-            // Check if the simulation was successful and returned a valid pair
-            return result && result.results && result.results.length > 0;
+            // Decode the response if successful
+            if (result && result.results && result.results.length > 0) {
+                // Would decode the XDR result here in a real implementation
+                return true;
+            }
+            
+            return false;
         } catch (error) {
             console.error('Error checking Soroswap pair:', error);
             // For demo purposes, return a simulated result
@@ -157,27 +180,40 @@ class StellarRPCClient {
         }
     }
 
-    buildGetPairTransaction(tokenAddress) {
-        // This would build a proper transaction to call get_pair on the Soroswap factory
-        // For now, returning a placeholder structure
+    buildGetPairTransactionJson(tokenAddress) {
+        // This builds a transaction JSON structure to call get_pair on the Soroswap factory
+        // For now, returning a simplified structure that would work with XDR encoding
         return {
             sourceAccount: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-            fee: '100',
-            seqNum: '1',
+            fee: 100,
+            seqNum: 1,
             timeBounds: null,
-            memo: null,
+            memo: {
+                type: 'none'
+            },
             operations: [{
-                type: 'invokeHostFunction',
-                hostFunction: {
-                    type: 'invokeContract',
-                    contractAddress: this.soroswapFactoryContract,
-                    functionName: 'get_pair',
-                    args: [
-                        { type: 'address', value: tokenAddress },
-                        { type: 'address', value: this.nativeAssetContract }
-                    ]
+                sourceAccount: null,
+                body: {
+                    type: 'invokeHostFunction',
+                    invokeHostFunctionOp: {
+                        hostFunction: {
+                            type: 'invokeContract',
+                            invokeContract: {
+                                contractAddress: this.soroswapFactoryContract,
+                                functionName: 'get_pair',
+                                args: [
+                                    { type: 'address', address: tokenAddress },
+                                    { type: 'address', address: this.nativeAssetContract }
+                                ]
+                            }
+                        },
+                        auth: []
+                    }
                 }
-            }]
+            }],
+            ext: {
+                v: 0
+            }
         };
     }
 
@@ -187,7 +223,8 @@ class StellarRPCClient {
             const result = await this.makeRPCCall('getEvents', {
                 filters: [{
                     type: 'contract',
-                    topics: [['swap', 'Swap'], [contractAddress]]
+                    contractIds: [contractAddress],
+                    topics: [['swap']] // Soroswap swap event
                 }],
                 pagination: {
                     limit: 100
