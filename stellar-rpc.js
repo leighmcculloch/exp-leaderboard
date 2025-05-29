@@ -79,11 +79,11 @@ class StellarRPCClient {
                 type: 'contractData',
                 contractData: {
                     contract: {
-                        type: 'address',
-                        address: contractAddress
+                        type: 'scAddressTypeContract',
+                        contractId: contractAddress
                     },
                     key: {
-                        type: 'instance'
+                        type: 'scvInstance'
                     },
                     durability: 'persistent'
                 }
@@ -115,11 +115,11 @@ class StellarRPCClient {
                 type: 'contractData',
                 contractData: {
                     contract: {
-                        type: 'address',
-                        address: contractAddress
+                        type: 'scAddressTypeContract',
+                        contractId: contractAddress
                     },
                     key: {
-                        type: 'instance'
+                        type: 'scvInstance'
                     },
                     durability: 'persistent'
                 }
@@ -186,7 +186,7 @@ class StellarRPCClient {
             
             // Encode 'mint' as an ScVal Symbol
             const mintSymbol = xdr.encode('ScVal', {
-                type: 'symbol',
+                type: 'scvSymbol',
                 sym: 'mint'
             });
             
@@ -283,7 +283,7 @@ class StellarRPCClient {
             
             // Encode 'swap' as an ScVal Symbol
             const swapSymbol = xdr.encode('ScVal', {
-                type: 'symbol',
+                type: 'scvSymbol',
                 sym: 'swap'
             });
             
