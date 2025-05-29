@@ -2,28 +2,45 @@
  * Stellar RPC Client for leaderboard functionality
  */
 
-// Import stellar-xdr-json module
-import stellar_xdr_json from 'https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js';
-
-// Initialize stellar-xdr-json library
+// Global stellar XDR JSON instance
+let stellar_xdr_json = null;
 let stellarXdrInitialized = false;
-let stellarXdrInitPromise = null;
 
+// Initialize stellar-xdr-json
 async function initializeStellarXdr() {
     if (stellarXdrInitialized) {
-        return;
+        return stellar_xdr_json;
     }
     
-    if (stellarXdrInitPromise) {
-        return stellarXdrInitPromise;
-    }
-    
-    stellarXdrInitPromise = (async () => {
-        await stellar_xdr_json.init();
+    try {
+        // Import the module dynamically
+        const module = await import('https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js');
+        
+        // Try different initialization patterns based on the module structure
+        if (module.default && typeof module.default === 'function') {
+            // If default export is a function, call it to get the initialized module
+            stellar_xdr_json = await module.default();
+        } else if (module.default && module.default.init) {
+            // If default export has an init method, call it then use the default export
+            await module.default.init();
+            stellar_xdr_json = module.default;
+        } else if (module.init) {
+            // If the module itself has an init method
+            await module.init();
+            stellar_xdr_json = module;
+        } else {
+            // Use the module as-is
+            stellar_xdr_json = module.default || module;
+        }
+        
         stellarXdrInitialized = true;
-    })();
-    
-    return stellarXdrInitPromise;
+        console.log('Stellar XDR JSON initialized successfully');
+        return stellar_xdr_json;
+        
+    } catch (error) {
+        console.error('Failed to initialize stellar-xdr-json:', error);
+        throw new Error(`Failed to load stellar-xdr-json: ${error.message}`);
+    }
 }
 
 class StellarRPCClient {
@@ -68,7 +85,7 @@ class StellarRPCClient {
     async checkContractDeployed(contractAddress) {
         try {
             // Initialize stellar-xdr-json if not already done
-            await initializeStellarXdr();
+            const xdr = await initializeStellarXdr();
             
             // Create the contract instance key in JSON format
             const keyJson = {
@@ -82,7 +99,7 @@ class StellarRPCClient {
             };
 
             // Convert to XDR using stellar-xdr-json
-            const keyXdr = stellar_xdr_json.encode('LedgerKey', keyJson);
+            const keyXdr = xdr.encode('LedgerKey', keyJson);
             
             const result = await this.makeRPCCall('getLedgerEntries', {
                 keys: [keyXdr]
@@ -98,7 +115,7 @@ class StellarRPCClient {
     async getContractWasm(contractAddress) {
         try {
             // Initialize stellar-xdr-json if not already done
-            await initializeStellarXdr();
+            const xdr = await initializeStellarXdr();
             
             // First get the contract instance to find the wasm hash
             // Create the contract instance key in JSON format
@@ -113,7 +130,7 @@ class StellarRPCClient {
             };
 
             // Convert to XDR using stellar-xdr-json
-            const keyXdr = stellar_xdr_json.encode('LedgerKey', keyJson);
+            const keyXdr = xdr.encode('LedgerKey', keyJson);
             
             const instanceResult = await this.makeRPCCall('getLedgerEntries', {
                 keys: [keyXdr]
@@ -124,7 +141,7 @@ class StellarRPCClient {
             }
 
             // Decode the XDR response
-            const instanceData = stellar_xdr_json.decode('LedgerEntryData', instanceResult.entries[0].xdr);
+            const instanceData = xdr.decode('LedgerEntryData', instanceResult.entries[0].xdr);
             // This would need proper XDR parsing in a real implementation
             // For now, we'll simulate the check
             return null; // Placeholder - would return actual wasm data
@@ -160,7 +177,7 @@ class StellarRPCClient {
     async checkMintEvents(contractAddress) {
         try {
             // Initialize stellar-xdr-json if not already done
-            await initializeStellarXdr();
+            const xdr = await initializeStellarXdr();
             
             // Get the latest ledger to calculate 2 days ago
             const latestLedger = await this.makeRPCCall('getLatestLedger');
@@ -171,7 +188,7 @@ class StellarRPCClient {
             const twoDaysAgoLedger = Math.max(1, currentLedgerSequence - 34560);
             
             // Encode 'mint' as an ScVal Symbol
-            const mintSymbol = stellar_xdr_json.encode('ScVal', {
+            const mintSymbol = xdr.encode('ScVal', {
                 type: 'symbol',
                 sym: 'mint'
             });
@@ -198,13 +215,13 @@ class StellarRPCClient {
     async checkSoroswapPair(contractAddress) {
         try {
             // Initialize stellar-xdr-json if not already done
-            await initializeStellarXdr();
+            const xdr = await initializeStellarXdr();
             
             // Build the transaction in JSON format first
             const transactionJson = this.buildGetPairTransactionJson(contractAddress);
             
             // Convert to XDR using stellar-xdr-json
-            const transactionXdr = stellar_xdr_json.encode('TransactionEnvelope', transactionJson);
+            const transactionXdr = xdr.encode('TransactionEnvelope', transactionJson);
             
             // Simulate a transaction to call get_pair function
             const result = await this.makeRPCCall('simulateTransaction', {
