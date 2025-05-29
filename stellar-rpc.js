@@ -8,16 +8,30 @@ let stellarXdrInitialized = false;
 
 // Initialize stellar-xdr-json
 async function initializeStellarXdr() {
-    if (stellarXdrInitialized) {
+    if (stellarXdrInitialized && stellar_xdr_json) {
         return stellar_xdr_json;
     }
     
     try {
         // Import the module
-        stellar_xdr_json = await import('https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js');
+        const module = await import('https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js');
         
-        // Call the init function to load the WASM file
-        await stellar_xdr_json.init();
+        // The module export structure might be different
+        if (module.default) {
+            stellar_xdr_json = module.default;
+        } else {
+            stellar_xdr_json = module;
+        }
+        
+        // Call the init function to load the WASM file  
+        if (stellar_xdr_json.init) {
+            await stellar_xdr_json.init();
+        } else if (stellar_xdr_json.default && stellar_xdr_json.default.init) {
+            await stellar_xdr_json.default.init();
+            stellar_xdr_json = stellar_xdr_json.default;
+        } else {
+            console.warn('No init function found on stellar-xdr-json module');
+        }
         
         stellarXdrInitialized = true;
         console.log('Stellar XDR JSON initialized successfully');
@@ -73,24 +87,31 @@ class StellarRPCClient {
             // Initialize stellar-xdr-json if not already done
             const xdr = await initializeStellarXdr();
             
+            if (!xdr || typeof xdr.encode !== 'function') {
+                throw new Error('stellar-xdr-json not properly initialized or missing encode function');
+            }
+            
             // Create the contract instance key in JSON format
             // For contract instance, we need a LedgerKey of type CONTRACT_DATA
             const keyJson = {
                 type: 'contractData',
                 contractData: {
-                    contract: {
-                        type: 'scAddressTypeContract',
-                        contractId: contractAddress
-                    },
-                    key: {
-                        type: 'scvInstance'
-                    },
+                    contract: contractAddress,
+                    key: 'ledgerKeyContractInstance',
                     durability: 'persistent'
                 }
             };
 
+            console.log('Encoding LedgerKey with JSON:', keyJson);
+            
             // Convert to XDR using stellar-xdr-json
             const keyXdr = xdr.encode('LedgerKey', keyJson);
+            
+            if (!keyXdr) {
+                throw new Error('XDR encoding returned null/undefined');
+            }
+            
+            console.log('LedgerKey encoded to XDR:', keyXdr.substring(0, 50) + '...');
             
             // Pass parameters in the correct format for getLedgerEntries
             const result = await this.makeRPCCall('getLedgerEntries', {
@@ -114,13 +135,8 @@ class StellarRPCClient {
             const keyJson = {
                 type: 'contractData',
                 contractData: {
-                    contract: {
-                        type: 'scAddressTypeContract',
-                        contractId: contractAddress
-                    },
-                    key: {
-                        type: 'scvInstance'
-                    },
+                    contract: contractAddress,
+                    key: 'ledgerKeyContractInstance',
                     durability: 'persistent'
                 }
             };
@@ -187,7 +203,7 @@ class StellarRPCClient {
             // Encode 'mint' as an ScVal Symbol
             const mintSymbol = xdr.encode('ScVal', {
                 type: 'scvSymbol',
-                sym: 'mint'
+                symbol: 'mint'
             });
             
             const result = await this.makeRPCCall('getEvents', {
@@ -284,7 +300,7 @@ class StellarRPCClient {
             // Encode 'swap' as an ScVal Symbol
             const swapSymbol = xdr.encode('ScVal', {
                 type: 'scvSymbol',
-                sym: 'swap'
+                symbol: 'swap'
             });
             
             // Look for swap events involving this contract
