@@ -13,25 +13,11 @@ async function initializeStellarXdr() {
     }
     
     try {
-        // Import the module dynamically
-        const module = await import('https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js');
+        // Import the module
+        stellar_xdr_json = await import('https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js');
         
-        // Try different initialization patterns based on the module structure
-        if (module.default && typeof module.default === 'function') {
-            // If default export is a function, call it to get the initialized module
-            stellar_xdr_json = await module.default();
-        } else if (module.default && module.default.init) {
-            // If default export has an init method, call it then use the default export
-            await module.default.init();
-            stellar_xdr_json = module.default;
-        } else if (module.init) {
-            // If the module itself has an init method
-            await module.init();
-            stellar_xdr_json = module;
-        } else {
-            // Use the module as-is
-            stellar_xdr_json = module.default || module;
-        }
+        // Call the init function to load the WASM file
+        await stellar_xdr_json.init();
         
         stellarXdrInitialized = true;
         console.log('Stellar XDR JSON initialized successfully');
@@ -50,7 +36,7 @@ class StellarRPCClient {
         this.soroswapFactoryContract = 'CBVFAI4TEJCHIICFUYN2C5VYW5TD3CKPIZ4S5P5LVVUWMF5MRLJH77NH'; // Soroswap factory contract
     }
 
-    async makeRPCCall(method, params = []) {
+    async makeRPCCall(method, params = {}) {
         try {
             const response = await fetch(this.rpcUrl, {
                 method: 'POST',
@@ -101,7 +87,10 @@ class StellarRPCClient {
             // Convert to XDR using stellar-xdr-json
             const keyXdr = xdr.encode('LedgerKey', keyJson);
             
-            const result = await this.makeRPCCall('getLedgerEntries', [keyXdr]);
+            // Pass parameters in the correct format for getLedgerEntries
+            const result = await this.makeRPCCall('getLedgerEntries', {
+                keys: [keyXdr]
+            });
 
             return result.entries && result.entries.length > 0;
         } catch (error) {
@@ -130,7 +119,10 @@ class StellarRPCClient {
             // Convert to XDR using stellar-xdr-json
             const keyXdr = xdr.encode('LedgerKey', keyJson);
             
-            const instanceResult = await this.makeRPCCall('getLedgerEntries', [keyXdr]);
+            // Pass parameters in the correct format for getLedgerEntries
+            const instanceResult = await this.makeRPCCall('getLedgerEntries', {
+                keys: [keyXdr]
+            });
 
             if (!instanceResult.entries || instanceResult.entries.length === 0) {
                 throw new Error('Contract instance not found');
@@ -176,7 +168,7 @@ class StellarRPCClient {
             const xdr = await initializeStellarXdr();
             
             // Get the latest ledger to calculate 2 days ago
-            const latestLedger = await this.makeRPCCall('getLatestLedger');
+            const latestLedger = await this.makeRPCCall('getLatestLedger', {});
             const currentLedgerSequence = latestLedger.sequence;
             
             // Calculate ledger sequence from 2 days ago
@@ -220,7 +212,10 @@ class StellarRPCClient {
             const transactionXdr = xdr.encode('TransactionEnvelope', transactionJson);
             
             // Simulate a transaction to call get_pair function
-            const result = await this.makeRPCCall('simulateTransaction', transactionXdr);
+            // Pass parameters in the correct format for simulateTransaction
+            const result = await this.makeRPCCall('simulateTransaction', {
+                transaction: transactionXdr
+            });
 
             // Decode the response if successful
             if (result && result.results && result.results.length > 0) {
