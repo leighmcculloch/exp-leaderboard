@@ -74,9 +74,14 @@ class StellarRPCClient {
             const xdr = await initializeStellarXdr();
             
             // Create the contract instance key in JSON format
+            // For contract instance, we need a LedgerKey of type CONTRACT_DATA
             const keyJson = {
+                type: 'contractData',
                 contractData: {
-                    contract: contractAddress,
+                    contract: {
+                        type: 'address',
+                        address: contractAddress
+                    },
                     key: {
                         type: 'instance'
                     },
@@ -107,8 +112,12 @@ class StellarRPCClient {
             // First get the contract instance to find the wasm hash
             // Create the contract instance key in JSON format
             const keyJson = {
+                type: 'contractData',
                 contractData: {
-                    contract: contractAddress,
+                    contract: {
+                        type: 'address',
+                        address: contractAddress
+                    },
                     key: {
                         type: 'instance'
                     },
