@@ -2,6 +2,8 @@
  * Main application logic for the Stellar Contract Leaderboard
  */
 
+import StellarRPCClient from './stellar-rpc.js';
+
 class LeaderboardApp {
     constructor() {
         this.contracts = [];
@@ -234,6 +236,9 @@ function addContract() {
     const address = input.value.trim().toUpperCase();
     app.addContract(address);
 }
+
+// Make addContract available globally
+window.addContract = addContract;
 
 // Handle Enter key in the input field
 document.addEventListener('DOMContentLoaded', () => {

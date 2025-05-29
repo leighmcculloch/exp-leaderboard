@@ -2,6 +2,9 @@
  * Stellar RPC Client for leaderboard functionality
  */
 
+// Import stellar-xdr-json module
+import stellar_xdr_json from 'https://unpkg.com/@stellar/stellar-xdr-json@22.0.0-rc.1.1/stellar_xdr_json.js';
+
 // Initialize stellar-xdr-json library
 let stellarXdrInitialized = false;
 let stellarXdrInitPromise = null;
@@ -16,12 +19,8 @@ async function initializeStellarXdr() {
     }
     
     stellarXdrInitPromise = (async () => {
-        if (typeof stellar_xdr_json !== 'undefined') {
-            await stellar_xdr_json.init();
-            stellarXdrInitialized = true;
-        } else {
-            throw new Error('stellar_xdr_json library not loaded');
-        }
+        await stellar_xdr_json.init();
+        stellarXdrInitialized = true;
     })();
     
     return stellarXdrInitPromise;
@@ -92,8 +91,7 @@ class StellarRPCClient {
             return result.entries && result.entries.length > 0;
         } catch (error) {
             console.error('Error checking contract deployment:', error);
-            // For demo purposes, return a random result if RPC fails
-            return Math.random() > 0.3;
+            throw error;
         }
     }
 
@@ -140,37 +138,51 @@ class StellarRPCClient {
         try {
             const wasm = await this.getContractWasm(contractAddress);
             if (!wasm) {
-                // For demo purposes, return a simulated result
-                return Math.random() > 0.6;
+                // Cannot verify without wasm data
+                return false;
             }
 
             // This would implement the SEP contract build info verification
-            // For now, we'll return a simulated result
+            // For now, we'll return false since we don't have full implementation
             // In a real implementation, this would:
             // 1. Extract source_repo from wasm metadata
             // 2. Clone the repo at the specified commit
             // 3. Build the contract
             // 4. Compare the resulting wasm hash
             
-            return Math.random() > 0.6; // Simulated result - build verification is typically harder
+            return false; // Cannot verify without full implementation
         } catch (error) {
             console.error('Error checking build verification:', error);
-            return Math.random() > 0.6;
+            throw error;
         }
     }
 
     async checkMintEvents(contractAddress) {
         try {
-            // Get events from the last 2 days
-            const twoDaysAgo = Math.floor((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000);
+            // Initialize stellar-xdr-json if not already done
+            await initializeStellarXdr();
+            
+            // Get the latest ledger to calculate 2 days ago
+            const latestLedger = await this.makeRPCCall('getLatestLedger');
+            const currentLedgerSequence = latestLedger.sequence;
+            
+            // Calculate ledger sequence from 2 days ago
+            // 1 ledger every 5 seconds, so 2 days = 2 * 24 * 60 * 60 / 5 = 34,560 ledgers
+            const twoDaysAgoLedger = Math.max(1, currentLedgerSequence - 34560);
+            
+            // Encode 'mint' as an ScVal Symbol
+            const mintSymbol = stellar_xdr_json.encode('ScVal', {
+                type: 'symbol',
+                sym: 'mint'
+            });
             
             const result = await this.makeRPCCall('getEvents', {
                 filters: [{
                     type: 'contract',
                     contractIds: [contractAddress],
-                    topics: [['mint', '*']] // Common mint event topics
+                    topics: [[mintSymbol, '*']] // Mint event with any second field
                 }],
-                startLedger: twoDaysAgo,
+                startLedger: twoDaysAgoLedger,
                 pagination: {
                     limit: 100
                 }
@@ -179,8 +191,7 @@ class StellarRPCClient {
             return result.events && result.events.length > 0;
         } catch (error) {
             console.error('Error checking mint events:', error);
-            // For demo purposes, return a simulated result
-            return Math.random() > 0.4;
+            throw error;
         }
     }
 
@@ -209,8 +220,7 @@ class StellarRPCClient {
             return false;
         } catch (error) {
             console.error('Error checking Soroswap pair:', error);
-            // For demo purposes, return a simulated result
-            return Math.random() > 0.7; // Pairs are less common
+            throw error;
         }
     }
 
@@ -268,8 +278,7 @@ class StellarRPCClient {
             return result.events && result.events.length > 0;
         } catch (error) {
             console.error('Error checking Soroswap swapped events:', error);
-            // For demo purposes, return a simulated result
-            return Math.random() > 0.8; // Swaps are even less common
+            throw error;
         }
     }
 
@@ -306,4 +315,4 @@ class StellarRPCClient {
 }
 
 // Export for use in other modules
-window.StellarRPCClient = StellarRPCClient;
+export default StellarRPCClient;
