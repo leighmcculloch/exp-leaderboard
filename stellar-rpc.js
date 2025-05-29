@@ -6,6 +6,22 @@
 let stellar_xdr_json = null;
 let stellarXdrInitialized = false;
 
+// Helper function to try multiple XDR encoding patterns
+async function tryEncodeXDR(xdr, type, patterns, description) {
+    for (let i = 0; i < patterns.length; i++) {
+        try {
+            const result = xdr.encode(type, patterns[i]);
+            if (result) {
+                console.log(`${description} - Pattern ${i + 1} succeeded:`, patterns[i]);
+                return result;
+            }
+        } catch (error) {
+            console.log(`${description} - Pattern ${i + 1} failed:`, error.message);
+        }
+    }
+    throw new Error(`All ${description} encoding patterns failed`);
+}
+
 // Initialize stellar-xdr-json
 async function initializeStellarXdr() {
     if (stellarXdrInitialized && stellar_xdr_json) {
@@ -84,24 +100,6 @@ class StellarRPCClient {
 
     async checkContractDeployed(contractAddress) {
         try {
-            // Temporarily disable XDR encoding due to issues
-            // Return a mock result for now to test the rest of the infrastructure
-            console.log('Temporarily mocking checkContractDeployed for:', contractAddress);
-            
-            // Test basic RPC connectivity first
-            const latestLedger = await this.makeRPCCall('getLatestLedger', {});
-            console.log('Basic RPC connectivity works, latest ledger:', latestLedger.sequence);
-            
-            // For now, return true for known contracts to test the UI
-            const knownContracts = [
-                'CBVFAI4TEJCHIICFUYN2C5VYW5TD3CKPIZ4S5P5LVVUWMF5MRLJH77NH',
-                'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAUHKENOWID'
-            ];
-            
-            return knownContracts.includes(contractAddress);
-            
-            // TODO: Restore XDR-based implementation once stellar-xdr-json is working
-            /*
             // Initialize stellar-xdr-json if not already done
             const xdr = await initializeStellarXdr();
             
@@ -109,32 +107,49 @@ class StellarRPCClient {
                 throw new Error('stellar-xdr-json not properly initialized or missing encode function');
             }
             
-            // Create the contract instance key in JSON format
-            // Try a simplified structure
-            const keyJson = {
-                contractData: {
-                    contract: contractAddress,
-                    key: 'instance',
-                    durability: 'persistent'
+            // Try multiple LedgerKey patterns for contract instance data
+            const keyPatterns = [
+                // Pattern 1: Basic structure
+                {
+                    contractData: {
+                        contract: contractAddress,
+                        key: 'instance',
+                        durability: 'persistent'
+                    }
+                },
+                // Pattern 2: With type field
+                {
+                    type: 'contractData',
+                    contractData: {
+                        contract: contractAddress,
+                        key: 'instance',
+                        durability: 'persistent'
+                    }
+                },
+                // Pattern 3: More explicit structure
+                {
+                    contractData: {
+                        contract: { address: contractAddress },
+                        key: { type: 'instance' },
+                        durability: 'persistent'
+                    }
+                },
+                // Pattern 4: Alternative key type
+                {
+                    contractData: {
+                        contract: contractAddress,
+                        key: 'ledgerKeyContractInstance',
+                        durability: 'persistent'
+                    }
                 }
-            };
+            ];
 
-            console.log('Encoding LedgerKey with JSON:', keyJson);
+            console.log('Trying to encode LedgerKey for contract:', contractAddress);
             
-            // Convert to XDR using stellar-xdr-json
-            let keyXdr;
-            try {
-                keyXdr = xdr.encode('LedgerKey', keyJson);
-            } catch (encodeError) {
-                console.error('XDR encoding failed:', encodeError);
-                throw new Error(`XDR encoding failed: ${encodeError.message}`);
-            }
+            // Try to encode with different patterns
+            const keyXdr = await tryEncodeXDR(xdr, 'LedgerKey', keyPatterns, 'LedgerKey Contract Data');
             
-            if (!keyXdr) {
-                throw new Error('XDR encoding returned null/undefined - check JSON structure');
-            }
-            
-            console.log('LedgerKey encoded to XDR:', keyXdr.substring(0, 50) + '...');
+            console.log('LedgerKey encoded successfully:', keyXdr.substring(0, 50) + '...');
             
             // Pass parameters in the correct format for getLedgerEntries
             const result = await this.makeRPCCall('getLedgerEntries', {
@@ -142,10 +157,9 @@ class StellarRPCClient {
             });
 
             return result.entries && result.entries.length > 0;
-            */
         } catch (error) {
             console.error('Error checking contract deployment:', error);
-            // Return false instead of throwing to allow the app to continue
+            // Return false for now to allow app to continue
             return false;
         }
     }
@@ -213,8 +227,8 @@ class StellarRPCClient {
 
     async checkMintEvents(contractAddress) {
         try {
-            // Temporarily disable XDR encoding and use simplified approach
-            console.log('Temporarily mocking checkMintEvents for:', contractAddress);
+            // Initialize stellar-xdr-json if not already done
+            const xdr = await initializeStellarXdr();
             
             // Test basic getLatestLedger to verify RPC connectivity
             const latestLedger = await this.makeRPCCall('getLatestLedger', {});
@@ -223,31 +237,17 @@ class StellarRPCClient {
             // Calculate ledger sequence from 2 days ago
             const twoDaysAgoLedger = Math.max(1, currentLedgerSequence - 34560);
             
-            // Try getEvents without XDR-encoded topics first
-            const result = await this.makeRPCCall('getEvents', {
-                filters: [{
-                    type: 'contract',
-                    contractIds: [contractAddress]
-                    // Remove topics filter temporarily
-                }],
-                startLedger: twoDaysAgoLedger,
-                pagination: {
-                    limit: 100
-                }
-            });
-
-            console.log('getEvents result:', result);
-            return result.events && result.events.length > 0;
+            // Try multiple ScVal patterns for 'mint' symbol
+            const mintPatterns = [
+                { sym: 'mint' },
+                { type: 'scvSymbol', sym: 'mint' },
+                { type: 'symbol', sym: 'mint' },
+                { type: 'scvSymbol', symbol: 'mint' },
+                'mint'
+            ];
             
-            // TODO: Restore XDR-based filtering once stellar-xdr-json is working
-            /*
-            // Initialize stellar-xdr-json if not already done
-            const xdr = await initializeStellarXdr();
-            
-            // Encode 'mint' as an ScVal Symbol - try simplified structure
-            const mintSymbol = xdr.encode('ScVal', {
-                sym: 'mint'
-            });
+            console.log('Trying to encode ScVal for mint symbol');
+            const mintSymbol = await tryEncodeXDR(xdr, 'ScVal', mintPatterns, 'ScVal Mint Symbol');
             
             const result = await this.makeRPCCall('getEvents', {
                 filters: [{
@@ -261,8 +261,8 @@ class StellarRPCClient {
                 }
             });
 
+            console.log('getEvents result:', result);
             return result.events && result.events.length > 0;
-            */
         } catch (error) {
             console.error('Error checking mint events:', error);
             return false; // Return false instead of throwing
@@ -322,23 +322,34 @@ class StellarRPCClient {
 
     async checkSoroswapSwapped(contractAddress) {
         try {
-            // Temporarily disable XDR encoding and use simplified approach
-            console.log('Temporarily mocking checkSoroswapSwapped for:', contractAddress);
+            // Initialize stellar-xdr-json if not already done
+            const xdr = await initializeStellarXdr();
             
-            // Try getEvents without XDR-encoded topics first  
+            // Try multiple ScVal patterns for 'swap' symbol
+            const swapPatterns = [
+                { sym: 'swap' },
+                { type: 'scvSymbol', sym: 'swap' },
+                { type: 'symbol', sym: 'swap' },
+                { type: 'scvSymbol', symbol: 'swap' },
+                'swap'
+            ];
+            
+            console.log('Trying to encode ScVal for swap symbol');
+            const swapSymbol = await tryEncodeXDR(xdr, 'ScVal', swapPatterns, 'ScVal Swap Symbol');
+            
+            // Look for swap events involving this contract
             const result = await this.makeRPCCall('getEvents', {
                 filters: [{
                     type: 'contract',
-                    contractIds: [contractAddress]
-                    // Remove topics filter temporarily
+                    contractIds: [contractAddress],
+                    topics: [[swapSymbol]] // Soroswap swap event encoded as XDR ScVal Symbol
                 }],
                 pagination: {
                     limit: 100
                 }
             });
 
-            // For now, return false since we can't filter by event type
-            return false;
+            return result.events && result.events.length > 0;
         } catch (error) {
             console.error('Error checking Soroswap swapped events:', error);
             return false; // Return false instead of throwing
