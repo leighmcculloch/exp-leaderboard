@@ -101,9 +101,7 @@ class StellarRPCClient {
             // Convert to XDR using stellar-xdr-json
             const keyXdr = xdr.encode('LedgerKey', keyJson);
             
-            const result = await this.makeRPCCall('getLedgerEntries', {
-                keys: [keyXdr]
-            });
+            const result = await this.makeRPCCall('getLedgerEntries', [keyXdr]);
 
             return result.entries && result.entries.length > 0;
         } catch (error) {
@@ -132,9 +130,7 @@ class StellarRPCClient {
             // Convert to XDR using stellar-xdr-json
             const keyXdr = xdr.encode('LedgerKey', keyJson);
             
-            const instanceResult = await this.makeRPCCall('getLedgerEntries', {
-                keys: [keyXdr]
-            });
+            const instanceResult = await this.makeRPCCall('getLedgerEntries', [keyXdr]);
 
             if (!instanceResult.entries || instanceResult.entries.length === 0) {
                 throw new Error('Contract instance not found');
@@ -224,9 +220,7 @@ class StellarRPCClient {
             const transactionXdr = xdr.encode('TransactionEnvelope', transactionJson);
             
             // Simulate a transaction to call get_pair function
-            const result = await this.makeRPCCall('simulateTransaction', {
-                transaction: transactionXdr
-            });
+            const result = await this.makeRPCCall('simulateTransaction', transactionXdr);
 
             // Decode the response if successful
             if (result && result.results && result.results.length > 0) {
@@ -280,12 +274,21 @@ class StellarRPCClient {
 
     async checkSoroswapSwapped(contractAddress) {
         try {
+            // Initialize stellar-xdr-json if not already done
+            const xdr = await initializeStellarXdr();
+            
+            // Encode 'swap' as an ScVal Symbol
+            const swapSymbol = xdr.encode('ScVal', {
+                type: 'symbol',
+                sym: 'swap'
+            });
+            
             // Look for swap events involving this contract
             const result = await this.makeRPCCall('getEvents', {
                 filters: [{
                     type: 'contract',
                     contractIds: [contractAddress],
-                    topics: [['swap']] // Soroswap swap event
+                    topics: [[swapSymbol]] // Soroswap swap event encoded as XDR ScVal Symbol
                 }],
                 pagination: {
                     limit: 100
