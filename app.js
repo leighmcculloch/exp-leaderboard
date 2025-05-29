@@ -254,4 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new LeaderboardApp();
+    // Make app globally accessible for onclick handlers
+    window.app = app;
 });
