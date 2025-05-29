@@ -92,12 +92,11 @@ class StellarRPCClient {
             }
             
             // Create the contract instance key in JSON format
-            // For contract instance, we need a LedgerKey of type CONTRACT_DATA
+            // Try a simplified structure
             const keyJson = {
-                type: 'contractData',
                 contractData: {
                     contract: contractAddress,
-                    key: 'ledgerKeyContractInstance',
+                    key: 'instance',
                     durability: 'persistent'
                 }
             };
@@ -133,10 +132,9 @@ class StellarRPCClient {
             // First get the contract instance to find the wasm hash
             // Create the contract instance key in JSON format
             const keyJson = {
-                type: 'contractData',
                 contractData: {
                     contract: contractAddress,
-                    key: 'ledgerKeyContractInstance',
+                    key: 'instance',
                     durability: 'persistent'
                 }
             };
@@ -200,10 +198,9 @@ class StellarRPCClient {
             // 1 ledger every 5 seconds, so 2 days = 2 * 24 * 60 * 60 / 5 = 34,560 ledgers
             const twoDaysAgoLedger = Math.max(1, currentLedgerSequence - 34560);
             
-            // Encode 'mint' as an ScVal Symbol
+            // Encode 'mint' as an ScVal Symbol - try simplified structure
             const mintSymbol = xdr.encode('ScVal', {
-                type: 'scvSymbol',
-                symbol: 'mint'
+                sym: 'mint'
             });
             
             const result = await this.makeRPCCall('getEvents', {
@@ -297,10 +294,9 @@ class StellarRPCClient {
             // Initialize stellar-xdr-json if not already done
             const xdr = await initializeStellarXdr();
             
-            // Encode 'swap' as an ScVal Symbol
+            // Encode 'swap' as an ScVal Symbol - try simplified structure
             const swapSymbol = xdr.encode('ScVal', {
-                type: 'scvSymbol',
-                symbol: 'swap'
+                sym: 'swap'
             });
             
             // Look for swap events involving this contract
