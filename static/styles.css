@@ -91,6 +91,26 @@ header p {
   background: #4c63d2;
 }
 
+.refresh-button {
+  padding: 12px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background: #059669;
+}
+
+.refresh-button:active {
+  background: #047857;
+}
+
 .leaderboard-section {
   background: white;
   border-radius: 12px;

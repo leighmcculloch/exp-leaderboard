@@ -276,8 +276,15 @@ function addContract() {
   app.addContract(address, name);
 }
 
-// Make addContract available globally
+function refreshAll() {
+  if (app) {
+    app.refreshAllContractData();
+  }
+}
+
+// Make functions available globally
 window.addContract = addContract;
+window.refreshAll = refreshAll;
 
 // Handle Enter key in the input fields
 document.addEventListener("DOMContentLoaded", () => {
