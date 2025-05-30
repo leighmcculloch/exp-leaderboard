@@ -26,7 +26,7 @@ async function initializeStellarXdr() {
 }
 
 // When searching events, look back this amount of time.
-const startLedgerOffset = -12000; // 3 hours ago
+const startLedgerOffset = -2160; // 3 hours ago
 
 class StellarRPCClient {
   constructor(rpcUrl = "https://soroban-testnet.stellar.org:443") {

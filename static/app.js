@@ -226,7 +226,11 @@ renderTable() {
             this.updateContractStatus(contract.address);
         } else {
             // Use cached data
-            this.updateContractStatusInTable(contract.address, "success", contract.status);
+            this.updateContractStatusInTable(
+              contract.address,
+              "success",
+              contract.status
+            );
         }
     });
 }
