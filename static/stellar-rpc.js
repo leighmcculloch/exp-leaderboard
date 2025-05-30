@@ -242,7 +242,10 @@ class StellarRPCClient {
         filters: [{
           type: "contract",
           contractIds: [contractAddress],
-          topics: [[mintSymbol, "*"]],
+          topics: [
+            [mintSymbol, "*"],
+            [mintSymbol, "*", "*"],
+          ],
         }],
         startLedger,
         pagination: {
