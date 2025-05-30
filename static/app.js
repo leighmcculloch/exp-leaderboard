@@ -163,7 +163,7 @@ class LeaderboardApp {
         // Only show loading for cells that don't already have a checkmark
         const currentContent = cell.innerHTML;
         if (!currentContent.includes("✅")) {
-          cell.innerHTML = '<span class="status-loading">⏳</span>';
+          cell.innerHTML = '<span class="status-loading">...</span>';
           cell.className = "status-cell status-loading";
         }
       } else if (state === "error") {
