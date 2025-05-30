@@ -1,0 +1,9 @@
+{
+  "tasks": {
+	  "dev": "deno run --watch --allow-net --allow-read=./static main.ts --port 8080",
+    "deploy": "deployctl deploy --prod"
+  },
+  "imports": {
+    "@std/http": "jsr:@std/http@^1.0.11"
+  }
+}
