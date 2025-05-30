@@ -199,14 +199,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkMintEvents(contractAddress, currentLedgerSequence = null) {
+  async checkMintEvents(contractAddress, currentLedgerSequence) {
     try {
       const xdr = await initializeStellarXdr();
-
-      if (currentLedgerSequence === null) {
-        const latestLedger = await this.makeRPCCall("getLatestLedger");
-        currentLedgerSequence = latestLedger.sequence;
-      }
 
       const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
@@ -232,14 +227,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapPair(contractAddress, currentLedgerSequence = null) {
+  async checkSoroswapPair(contractAddress, currentLedgerSequence) {
     try {
       const xdr = await initializeStellarXdr();
-
-      if (currentLedgerSequence === null) {
-        const latestLedger = await this.makeRPCCall("getLatestLedger");
-        currentLedgerSequence = latestLedger.sequence;
-      }
 
       const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
@@ -277,14 +267,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapLiquidity(contractAddress, currentLedgerSequence = null) {
+  async checkSoroswapLiquidity(contractAddress, currentLedgerSequence) {
     try {
       const xdr = await initializeStellarXdr();
-
-      if (currentLedgerSequence === null) {
-        const latestLedger = await this.makeRPCCall("getLatestLedger");
-        currentLedgerSequence = latestLedger.sequence;
-      }
 
       const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
@@ -322,14 +307,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapSwapped(contractAddress, currentLedgerSequence = null) {
+  async checkSoroswapSwapped(contractAddress, currentLedgerSequence) {
     try {
       const xdr = await initializeStellarXdr();
-
-      if (currentLedgerSequence === null) {
-        const latestLedger = await this.makeRPCCall("getLatestLedger");
-        currentLedgerSequence = latestLedger.sequence;
-      }
 
       const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
@@ -369,7 +349,7 @@ class StellarRPCClient {
     }
   }
 
-  async getFullContractStatus(contractAddress) {
+  async getFullContractStatus(contractAddress, currentLedgerSequence) {
     const status = {
       deployed: false,
       buildVerified: false,
@@ -380,9 +360,11 @@ class StellarRPCClient {
     };
 
     try {
-      // Get the latest ledger once to use across all checks
-      const latestLedger = await this.makeRPCCall("getLatestLedger");
-      const currentLedgerSequence = latestLedger.sequence;
+      // If no ledger sequence was provided, get it
+      if (currentLedgerSequence === undefined) {
+        const latestLedger = await this.makeRPCCall("getLatestLedger");
+        currentLedgerSequence = latestLedger.sequence;
+      }
 
       status.deployed = await this.checkContractDeployed(contractAddress);
       status.buildVerified = await this.checkBuildVerified(contractAddress);

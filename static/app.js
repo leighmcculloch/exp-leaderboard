@@ -48,7 +48,7 @@ class LeaderboardApp {
       /^[A-Z2-7]+$/.test(address);
   }
 
-  addContract(address, name = "") {
+  async addContract(address, name = "") {
     if (!address) {
       alert("Please enter a contract address");
       return;
@@ -91,7 +91,15 @@ class LeaderboardApp {
     this.renderTable();
 
     // Start checking the contract status
-    this.updateContractStatus(address);
+    try {
+      // Get the latest ledger
+      const latestLedger = await this.stellarRPC.makeRPCCall("getLatestLedger");
+      this.updateContractStatus(address, latestLedger.sequence);
+    } catch (error) {
+      console.error("Error fetching latest ledger:", error);
+      // Fall back to updating without ledger sequence
+      this.updateContractStatus(address);
+    }
 
     // Clear the inputs
     document.getElementById("contractAddress").value = "";
@@ -112,7 +120,7 @@ class LeaderboardApp {
     }`;
   }
 
-  async updateContractStatus(address) {
+  async updateContractStatus(address, currentLedgerSequence) {
     const contract = this.contracts.find((c) => c.address === address);
     if (!contract) return;
 
@@ -121,7 +129,7 @@ class LeaderboardApp {
       this.updateContractStatusInTable(address, "loading");
 
       // Get status from Stellar RPC
-      const status = await this.stellarRPC.getFullContractStatus(address);
+      const status = await this.stellarRPC.getFullContractStatus(address, currentLedgerSequence);
 
       // Update contract data
       contract.status = status;
@@ -199,14 +207,27 @@ class LeaderboardApp {
   }
 
   async refreshAllContractData() {
-    const promises = this.contracts.map((contract) =>
-      this.updateContractStatus(contract.address)
-    );
+    try {
+      // Get the latest ledger once for all contracts
+      const latestLedger = await this.stellarRPC.makeRPCCall("getLatestLedger");
+      const currentLedgerSequence = latestLedger.sequence;
 
-    await Promise.allSettled(promises);
+      const promises = this.contracts.map((contract) =>
+        this.updateContractStatus(contract.address, currentLedgerSequence)
+      );
+
+      await Promise.allSettled(promises);
+    } catch (error) {
+      console.error("Error fetching latest ledger:", error);
+      // Fall back to updating each contract without ledger sequence
+      const promises = this.contracts.map((contract) =>
+        this.updateContractStatus(contract.address)
+      );
+      await Promise.allSettled(promises);
+    }
   }
 
-  renderTable() {
+  async renderTable() {
     const table = document.getElementById("leaderboardTable");
     const thead = table.querySelector("thead tr");
     const tbody = table.querySelector("tbody");
@@ -244,18 +265,41 @@ class LeaderboardApp {
     });
 
     // If we have contracts, start updating their status
-    this.contracts.forEach((contract) => {
-      if (!contract.lastUpdated || this.isDataStale(contract.lastUpdated)) {
-        this.updateContractStatus(contract.address);
-      } else {
-        // Use cached data
-        this.updateContractStatusInTable(
-          contract.address,
-          "success",
-          contract.status,
-        );
+    if (this.contracts.length > 0) {
+      try {
+        // Get the latest ledger once for all contracts
+        const latestLedger = await this.stellarRPC.makeRPCCall("getLatestLedger");
+        const currentLedgerSequence = latestLedger.sequence;
+        
+        this.contracts.forEach((contract) => {
+          if (!contract.lastUpdated || this.isDataStale(contract.lastUpdated)) {
+            this.updateContractStatus(contract.address, currentLedgerSequence);
+          } else {
+            // Use cached data
+            this.updateContractStatusInTable(
+              contract.address,
+              "success",
+              contract.status,
+            );
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching latest ledger:", error);
+        // Fall back to updating each contract without ledger sequence
+        this.contracts.forEach((contract) => {
+          if (!contract.lastUpdated || this.isDataStale(contract.lastUpdated)) {
+            this.updateContractStatus(contract.address);
+          } else {
+            // Use cached data
+            this.updateContractStatusInTable(
+              contract.address,
+              "success",
+              contract.status,
+            );
+          }
+        });
       }
-    });
+    }
   }
 
   isDataStale(lastUpdated) {
