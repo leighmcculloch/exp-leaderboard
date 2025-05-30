@@ -424,12 +424,18 @@ class StellarRPCClient {
       status.deployed = await this.checkContractDeployed(contractAddress);
       status.buildVerified = await this.checkBuildVerified(contractAddress);
       status.minted = await this.checkMintEvents(contractAddress, startLedger);
-      status.soroswapPair = await this.checkSoroswapPair(contractAddress, startLedger);
+      status.soroswapPair = await this.checkSoroswapPair(
+        contractAddress,
+        startLedger,
+      );
       status.soroswapLiquidity = await this.checkSoroswapLiquidity(
         contractAddress,
         startLedger,
       );
-      status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress, startLedger);
+      status.soroswapSwapped = await this.checkSoroswapSwapped(
+        contractAddress,
+        startLedger,
+      );
     } catch (error) {
       console.error("Error getting full contract status:", error);
     }
