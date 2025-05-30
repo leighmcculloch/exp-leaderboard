@@ -255,23 +255,18 @@ class StellarRPCClient {
       });
       console.log("soroswap pair: getEvents result:", result);
 
-      let nativeMatched = false;
-      let tokenMatched = false;
       for (const event of result.events) {
         const valueJson = xdr.decode_stream("ScVal", event.value);
         const value = JSON.parse(valueJson);
         for (const mapEntry of value.map) {
           if (mapEntry.key["symbol"] == "token_0" || mapEntry.key["symbol"] == "token_1") {
-            if (mapEntry.val["address"] == this.nativeAssetContract) {
-              nativeMatched = true;
-            }
             if (mapEntry.val["address"] == contractAddress) {
-              tokenMatched = true;
+              return true;
             }
           }
         }
       }
-      return nativeMatched && tokenMatched;
+      return false;
     } catch (error) {
       console.error("Error checking Soroswap pair:", error);
       return false;
@@ -303,23 +298,18 @@ class StellarRPCClient {
       });
       console.log("soroswap liquidity: getEvents result:", result);
 
-      let nativeMatched = false;
-      let tokenMatched = false;
       for (const event of result.events) {
         const valueJson = xdr.decode_stream("ScVal", event.value);
         const value = JSON.parse(valueJson);
         for (const mapEntry of value.map) {
           if (mapEntry.key["symbol"] == "token_a" || mapEntry.key["symbol"] == "token_b") {
-            if (mapEntry.val["address"] == this.nativeAssetContract) {
-              nativeMatched = true;
-            }
             if (mapEntry.val["address"] == contractAddress) {
-              tokenMatched = true;
+              return true;
             }
           }
         }
       }
-      return nativeMatched && tokenMatched;
+      return false;
     } catch (error) {
       console.error("Error checking Soroswap liquidity:", error);
       return false;
