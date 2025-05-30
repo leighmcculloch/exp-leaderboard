@@ -138,7 +138,7 @@ header p {
   font-weight: 600;
   color: #475569;
   position: relative;
-  min-width: 120px;
+  width: 300px;
 }
 
 .remove-contract {

@@ -80,6 +80,7 @@ class LeaderboardApp {
         buildVerified: null,
         minted: null,
         soroswapPair: null,
+        soroswapLiquidity: null,
         soroswapSwapped: null,
       },
       lastUpdated: null,
@@ -148,6 +149,7 @@ class LeaderboardApp {
       "build-verified",
       "minted",
       "soroswap-pair",
+      "soroswap-liquidity",
       "soroswap-swapped",
     ];
 
@@ -178,6 +180,9 @@ class LeaderboardApp {
             break;
           case "soroswap-pair":
             statusKey = "soroswapPair";
+            break;
+          case "soroswap-liquidity":
+            statusKey = "soroswapLiquidity";
             break;
           case "soroswap-swapped":
             statusKey = "soroswapSwapped";

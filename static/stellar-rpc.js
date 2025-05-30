@@ -25,6 +25,9 @@ async function initializeStellarXdr() {
   }
 }
 
+// When searching events, look back this amount of time.
+const startLedgerOffset = -2160; // 3 hours ago
+
 class StellarRPCClient {
   constructor(rpcUrl = "https://soroban-testnet.stellar.org:443") {
     this.rpcUrl = rpcUrl;
@@ -32,6 +35,8 @@ class StellarRPCClient {
       "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"; // Native XLM contract on testnet
     this.soroswapFactoryContract =
       "CBVFAI4TEJCHIICFUYN2C5VYW5TD3CKPIZ4S5P5LVVUWMF5MRLJH77NH"; // Soroswap factory contract
+    this.soroswapRouterContract =
+      "CACIQ6HWPBEMPQYKRRAZSM6ZQORTBTS7DNXCRTI6NQYMUP2BHOXTBUVD"; // Soroswap router contract
   }
 
   async makeRPCCall(method, params = {}) {
@@ -201,7 +206,7 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence - 2160); // 3 hours ago
+      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
       const mintSymbol = xdr.encode("ScVal", JSON.stringify({ symbol: "mint" }));
 
@@ -232,7 +237,7 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence - 2160); // 3 hours ago
+      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
 
       const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapFactory" }));
       const newPairTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "new_pair" }));
@@ -273,9 +278,92 @@ class StellarRPCClient {
     }
   }
 
+  async checkSoroswapLiquidity(contractAddress) {
+    try {
+      const xdr = await initializeStellarXdr();
+
+      const latestLedger = await this.makeRPCCall("getLatestLedger");
+      const currentLedgerSequence = latestLedger.sequence;
+
+      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+
+      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapRouter" }));
+      const addTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "add" }));
+
+      const result = await this.makeRPCCall("getEvents", {
+        filters: [{
+          type: "contract",
+          contractIds: [this.soroswapRouterContract],
+          topics: [[soroswapTopic, addTopic]],
+        }],
+        startLedger,
+        pagination: {
+          limit: 100,
+        },
+      });
+      console.log("soroswap liquidity: getEvents result:", result);
+
+      let nativeMatched = false;
+      let tokenMatched = false;
+      for (const event of result.events) {
+        const valueJson = xdr.decode_stream("ScVal", event.value);
+        const value = JSON.parse(valueJson);
+        for (const mapEntry of value.map) {
+          if (mapEntry.key["symbol"] == "token_a" || mapEntry.key["symbol"] == "token_b") {
+            if (mapEntry.val["address"] == this.nativeAssetContract) {
+              nativeMatched = true;
+            }
+            if (mapEntry.val["address"] == contractAddress) {
+              tokenMatched = true;
+            }
+          }
+        }
+      }
+      return nativeMatched && tokenMatched;
+    } catch (error) {
+      console.error("Error checking Soroswap liquidity:", error);
+      return false;
+    }
+  }
+
   async checkSoroswapSwapped(contractAddress) {
     try {
-      // TODO: Check for swap event from pair contract.
+      const xdr = await initializeStellarXdr();
+
+      const latestLedger = await this.makeRPCCall("getLatestLedger");
+      const currentLedgerSequence = latestLedger.sequence;
+
+      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+
+      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapRouter" }));
+      const swapTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "swap" }));
+
+      const result = await this.makeRPCCall("getEvents", {
+        filters: [{
+          type: "contract",
+          contractIds: [this.soroswapRouterContract],
+          topics: [[soroswapTopic, swapTopic]],
+        }],
+        startLedger,
+        pagination: {
+          limit: 100,
+        },
+      });
+      console.log("soroswap swap: getEvents result:", result);
+
+      for (const event of result.events) {
+        const valueJson = xdr.decode_stream("ScVal", event.value);
+        const value = JSON.parse(valueJson);
+        for (const mapEntry of value.map) {
+          if (mapEntry.key["symbol"] == "path") {
+            for (const address of mapEntry.val["vec"]) {
+              if (address["address"] == contractAddress) {
+                return true;
+              }
+            }
+          }
+        }
+      }
       return false;
     } catch (error) {
       console.error("Error checking Soroswap swapped events:", error);
@@ -289,6 +377,7 @@ class StellarRPCClient {
       buildVerified: false,
       minted: false,
       soroswapPair: false,
+      soroswapLiquidity: false,
       soroswapSwapped: false,
     };
 
@@ -297,7 +386,8 @@ class StellarRPCClient {
       status.buildVerified = await this.checkBuildVerified(contractAddress);
       status.minted = await this.checkMintEvents(contractAddress);
       status.soroswapPair = await this.checkSoroswapPair(contractAddress);
-      //status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress);
+      status.soroswapLiquidity = await this.checkSoroswapLiquidity(contractAddress);
+      status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress);
     } catch (error) {
       console.error("Error getting full contract status:", error);
     }
