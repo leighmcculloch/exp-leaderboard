@@ -210,7 +210,8 @@ class StellarRPCClient {
 
       const mintSymbol = xdr.encode("ScVal", JSON.stringify({ symbol: "mint" }));
 
-      const result = await this.makeRPCCall("getEvents", {
+      // First RPC call with topic pattern [mintSymbol, "*"]
+      const result1 = await this.makeRPCCall("getEvents", {
         filters: [{
           type: "contract",
           contractIds: [contractAddress],
@@ -222,8 +223,23 @@ class StellarRPCClient {
         },
       });
 
-      console.log("getEvents result:", result);
-      return result.events && result.events.length > 0;
+      // Second RPC call with topic pattern [mintSymbol, "*", "*"]
+        const result2 = await this.makeRPCCall("getEvents", {
+            filters: [{
+                type: "contract",
+                contractIds: [contractAddress],
+                topics: [[mintSymbol, "*", "*"]],
+            }],
+            startLedger,
+            pagination: {
+                limit: 100,
+            },
+        });
+
+      console.log("getEvents result:", result1);
+      console.log("getEvents result:", result2);
+      return (result1.events && result1.events.length > 0) || 
+               (result2.events && result2.events.length > 0);
     } catch (error) {
       console.error("Error checking mint events:", error);
       return false; // Return false instead of throwing

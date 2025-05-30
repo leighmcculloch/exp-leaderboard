@@ -139,124 +139,101 @@ class LeaderboardApp {
   }
 
   updateContractStatusInTable(address, state, status = null) {
-    const contractIndex = this.contracts.findIndex((c) =>
-      c.address === address
-    );
-    if (contractIndex === -1) return;
-
     const metrics = [
-      "deployed",
-      "build-verified",
-      "minted",
-      "soroswap-pair",
-      "soroswap-liquidity",
-      "soroswap-swapped",
+        "deployed",
+        "buildVerified",
+        "minted",
+        "soroswapPair",
+        "soroswapLiquidity",
+        "soroswapSwapped"
     ];
 
-    metrics.forEach((metric) => {
-      const cell = document.querySelector(
-        `[data-metric="${metric}"] .status-cell[data-contract="${address}"]`,
-      );
-      if (!cell) return;
+    metrics.forEach(metric => {
+        const cell = document.querySelector(
+            `.status-cell[data-contract="${address}"][data-metric="${metric}"]`
+        );
+        if (!cell) return;
 
-      if (state === "loading") {
-        // Only show loading for cells that don't already have a checkmark
-        const currentContent = cell.innerHTML;
-        if (!currentContent.includes("✅")) {
-          cell.innerHTML = '<span class="status-loading">...</span>';
-          cell.className = "status-cell status-loading";
+        if (state === "loading") {
+            if (!cell.innerHTML.includes("✅")) {
+                cell.innerHTML = '<span class="status-loading">...</span>';
+                cell.className = "status-cell status-loading";
+            }
+        } else if (state === "error") {
+            cell.innerHTML = '<span class="status-error">❌</span>';
+            cell.className = "status-cell status-error";
+        } else if (state === "success" && status) {
+            const isSuccess = status[metric];
+            cell.innerHTML = isSuccess ? "✅" : "❌";
+            cell.className = "status-cell";
         }
-      } else if (state === "error") {
-        cell.innerHTML = '<span class="status-error">❌</span>';
-        cell.className = "status-cell status-error";
-      } else if (state === "success" && status) {
-        const metricKey = metric.replace("-", "_").replace("_", "")
-          .toLowerCase();
-        let statusKey;
-
-        switch (metric) {
-          case "build-verified":
-            statusKey = "buildVerified";
-            break;
-          case "soroswap-pair":
-            statusKey = "soroswapPair";
-            break;
-          case "soroswap-liquidity":
-            statusKey = "soroswapLiquidity";
-            break;
-          case "soroswap-swapped":
-            statusKey = "soroswapSwapped";
-            break;
-          default:
-            statusKey = metric;
-        }
-
-        const isSuccess = status[statusKey];
-        cell.innerHTML = isSuccess ? "✅" : "❌";
-        cell.className = "status-cell";
-      }
     });
-  }
+}
 
-  async refreshAllContractData() {
-    const promises = this.contracts.map((contract) =>
-      this.updateContractStatus(contract.address)
-    );
+renderTable() {
+    const tbody = document.getElementById("leaderboardTable").querySelector("tbody");
+    
+    // Clear existing rows
+    tbody.innerHTML = "";
 
-    await Promise.allSettled(promises);
-  }
-
-  renderTable() {
-    const table = document.getElementById("leaderboardTable");
-    const thead = table.querySelector("thead tr");
-    const tbody = table.querySelector("tbody");
-
-    // Clear existing contract columns (keep the first header)
-    const existingHeaders = thead.querySelectorAll(".contract-header");
-    existingHeaders.forEach((header) => header.remove());
-
-    // Clear existing status cells
-    const existingCells = tbody.querySelectorAll(".status-cell");
-    existingCells.forEach((cell) => cell.remove());
-
-    // Add contract headers
-    this.contracts.forEach((contract) => {
-      const th = document.createElement("th");
-      th.className = "contract-header";
-      th.innerHTML = `
-                <div class="contract-name">${contract.name}</div>
-                <div class="contract-address">${contract.address}</div>
-                <button class="remove-contract" onclick="app.removeContract('${contract.address}')">Remove</button>
-            `;
-      thead.appendChild(th);
+    // Sort contracts by number of completed steps
+    const sortedContracts = [...this.contracts].sort((a, b) => {
+        const aComplete = Object.values(a.status || {}).filter(Boolean).length;
+        const bComplete = Object.values(b.status || {}).filter(Boolean).length;
+        return bComplete - aComplete; // Sort descending (most checkmarks first)
     });
-
-    // Add status cells for each metric
-    const metricRows = tbody.querySelectorAll(".metric-row");
-    metricRows.forEach((row) => {
-      this.contracts.forEach((contract) => {
-        const td = document.createElement("td");
-        td.className = "status-cell";
-        td.setAttribute("data-contract", contract.address);
-        td.innerHTML = '<span class="status-loading">➖</span>';
-        row.appendChild(td);
-      });
+    
+    // Add a row for each contract
+    sortedContracts.forEach(contract => {
+        const row = document.createElement("tr");
+        row.className = "contract-row";
+        
+        // Contract info cell
+        const contractCell = document.createElement("td");
+        contractCell.className = "contract-info";
+        contractCell.innerHTML = `
+            <div class="contract-name">${contract.name}</div>
+            <div class="contract-address">${contract.address}</div>
+            <button class="remove-contract" onclick="app.removeContract('${contract.address}')">Remove</button>
+        `;
+        row.appendChild(contractCell);
+        
+        // Status cells
+        const metrics = [
+            "deployed",
+            "buildVerified",
+            "minted",
+            "soroswapPair",
+            "soroswapLiquidity",
+            "soroswapSwapped"
+        ];
+        
+        metrics.forEach(metric => {
+            const td = document.createElement("td");
+            td.className = "status-cell";
+            td.setAttribute("data-contract", contract.address);
+            td.setAttribute("data-metric", metric);
+            td.innerHTML = '<span class="status-loading">➖</span>';
+            row.appendChild(td);
+        });
+        
+        tbody.appendChild(row);
     });
 
     // If we have contracts, start updating their status
-    this.contracts.forEach((contract) => {
-      if (!contract.lastUpdated || this.isDataStale(contract.lastUpdated)) {
-        this.updateContractStatus(contract.address);
-      } else {
-        // Use cached data
-        this.updateContractStatusInTable(
-          contract.address,
-          "success",
-          contract.status,
-        );
-      }
+    this.contracts.forEach(contract => {
+        if (!contract.lastUpdated || this.isDataStale(contract.lastUpdated)) {
+            this.updateContractStatus(contract.address);
+        } else {
+            // Use cached data
+            this.updateContractStatusInTable(
+              contract.address,
+              "success",
+              contract.status
+            );
+        }
     });
-  }
+}
 
   isDataStale(lastUpdated) {
     const now = new Date();
@@ -265,6 +242,27 @@ class LeaderboardApp {
 
     return (now - updated) > fiveMinutes;
   }
+
+  refreshAllContractData() {
+        // Show loading indicator if you have one
+        const loadingIndicator = document.getElementById("loadingIndicator");
+        if (loadingIndicator) {
+            loadingIndicator.style.display = "block";
+        }
+
+        // Update all contracts
+        const promises = this.contracts.map(contract => 
+            this.updateContractStatus(contract.address)
+        );
+
+        // Hide loading indicator when all updates are complete
+        Promise.all(promises).finally(() => {
+            if (loadingIndicator) {
+                loadingIndicator.style.display = "none";
+            }
+            this.renderTable();
+        });
+    }
 }
 
 // Global functions for HTML event handlers

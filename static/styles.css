@@ -125,7 +125,7 @@ header p {
 
 .leaderboard-table th,
 .leaderboard-table td {
-  padding: 16px;
+  padding: 20px 10px;
   text-align: center;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -135,7 +135,22 @@ header p {
   font-weight: 600;
   color: #374151;
   position: sticky;
+  z-index: 1;
+  text-align: left;
   top: 0;
+  border-bottom: 2px solid #ddd;
+}
+
+.leaderboard-table th:not(:first-child) {
+  width: 120px;  /* Match status cell width */
+  min-width: 120px;
+  max-width: 120px;
+  text-align: center;  /* Center header text */
+}
+
+/* Add some visual separation between rows */
+.contract-row:hover {
+    background-color: #f8fafc;
 }
 
 .metric-header {
@@ -161,6 +176,12 @@ header p {
   width: 300px;
 }
 
+.contract-info {
+  min-width: 300px;
+  padding: 20px 10px;
+}
+
+
 .remove-contract {
   background: #ef4444;
   color: white;
@@ -180,6 +201,11 @@ header p {
 .status-cell {
   font-size: 24px;
   vertical-align: middle;
+  width: 120px;  /* Fixed width for status cells */
+  min-width: 120px;  /* Ensure columns don't collapse */
+  max-width: 120px;  /* Maintain consistent width */
+  padding: 20px 5px;  /* Adjusted padding for fixed width */
+  text-align: center;
 }
 
 .status-loading {
@@ -201,10 +227,11 @@ header p {
 
 .contract-address {
   font-family: "Courier New", monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: #6b7280;
   word-break: break-all;
-  margin-top: 4px;
+  margin-top: 8px;
+  padding-right: 10px;
 }
 
 .contract-name {
@@ -224,13 +251,27 @@ header p {
     width: 100%;
   }
 
+  .contract-info {
+    min-width: 250px;
+  }
+
   .leaderboard-table {
     font-size: 14px;
   }
 
-  .leaderboard-table th,
+  .leaderboard-table th:not(:first-child) {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+  }
   .leaderboard-table td {
-    padding: 12px 8px;
+    padding: 16px 8px;
+  }
+
+  .status-cell {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
   }
 
   header h1 {
@@ -244,11 +285,26 @@ header p {
   }
 
   .status-cell {
-    font-size: 20px;
+    width: 80px;
+    min-width: 100px;
+    max-width: 100px;
+  }
+
+  .contract-info {
+    min-width: 200px;
   }
 
   .metric-name {
     min-width: 150px;
     font-size: 13px;
   }
+  .leaderboard-table th:not(:first-child) {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+  }
+  .leaderboard-table td {
+    padding: 12px 8px;
+  }
+
 }

@@ -19,7 +19,7 @@
           <input
             type="text"
             id="contractName"
-            placeholder="Enter contract name (e.g., My Token)"
+            placeholder="Enter your Team Name (e.g., Team Awesome)"
             class="contract-input"
           />
           <input
@@ -38,33 +38,20 @@
       </div>
 
       <div class="leaderboard-section">
-        <table id="leaderboardTable" class="leaderboard-table">
+        <table id="leaderboardTable">
           <thead>
             <tr>
-              <th class="metric-header">Metric</th>
-              <!-- Contract columns will be dynamically added here -->
+              <th>Team</th>
+              <th>Deployed</th>
+              <th>Build Verified</th>
+              <th>Minted</th>
+              <th>Soroswap Pair</th>
+              <th>Soroswap Liquidity</th>
+              <th>Soroswap Swapped</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="metric-row" data-metric="deployed">
-              <td class="metric-name">Deployed</td>
-              <!-- Status cells will be dynamically added here -->
-            </tr>
-            <tr class="metric-row" data-metric="build-verified">
-              <td class="metric-name">Build Attestation</td>
-            </tr>
-            <tr class="metric-row" data-metric="minted">
-              <td class="metric-name">Minted</td>
-            </tr>
-            <tr class="metric-row" data-metric="soroswap-pair">
-              <td class="metric-name">Soroswap Pair with XLM Setup</td>
-            </tr>
-            <tr class="metric-row" data-metric="soroswap-liquidity">
-              <td class="metric-name">Liquidity Added</td>
-            </tr>
-            <tr class="metric-row" data-metric="soroswap-swapped">
-              <td class="metric-name">Swapped</td>
-            </tr>
+            <!-- Rows will be dynamically added here -->
           </tbody>
         </table>
       </div>
