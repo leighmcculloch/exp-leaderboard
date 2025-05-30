@@ -220,17 +220,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkMintEvents(contractAddress) {
+  async checkMintEvents(contractAddress, startLedger) {
     try {
       const xdr = await initializeStellarXdr();
-
-      const latestLedger = await this.makeRPCCall("getLatestLedger");
-      const currentLedgerSequence = latestLedger.sequence;
-
-      const startLedger = Math.max(
-        1,
-        currentLedgerSequence + startLedgerOffset,
-      );
 
       const mintSymbol = xdr.encode(
         "ScVal",
@@ -276,17 +268,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapPair(contractAddress) {
+  async checkSoroswapPair(contractAddress, startLedger) {
     try {
       const xdr = await initializeStellarXdr();
-
-      const latestLedger = await this.makeRPCCall("getLatestLedger");
-      const currentLedgerSequence = latestLedger.sequence;
-
-      const startLedger = Math.max(
-        1,
-        currentLedgerSequence + startLedgerOffset,
-      );
 
       const soroswapTopic = xdr.encode(
         "ScVal",
@@ -331,17 +315,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapLiquidity(contractAddress) {
+  async checkSoroswapLiquidity(contractAddress, startLedger) {
     try {
       const xdr = await initializeStellarXdr();
-
-      const latestLedger = await this.makeRPCCall("getLatestLedger");
-      const currentLedgerSequence = latestLedger.sequence;
-
-      const startLedger = Math.max(
-        1,
-        currentLedgerSequence + startLedgerOffset,
-      );
 
       const soroswapTopic = xdr.encode(
         "ScVal",
@@ -383,17 +359,9 @@ class StellarRPCClient {
     }
   }
 
-  async checkSoroswapSwapped(contractAddress) {
+  async checkSoroswapSwapped(contractAddress, startLedger) {
     try {
       const xdr = await initializeStellarXdr();
-
-      const latestLedger = await this.makeRPCCall("getLatestLedger");
-      const currentLedgerSequence = latestLedger.sequence;
-
-      const startLedger = Math.max(
-        1,
-        currentLedgerSequence + startLedgerOffset,
-      );
 
       const soroswapTopic = xdr.encode(
         "ScVal",
@@ -445,14 +413,23 @@ class StellarRPCClient {
     };
 
     try {
+      // Call getLatestLedger once and calculate startLedger for all event-based checks
+      const latestLedger = await this.makeRPCCall("getLatestLedger");
+      const currentLedgerSequence = latestLedger.sequence;
+      const startLedger = Math.max(
+        1,
+        currentLedgerSequence + startLedgerOffset,
+      );
+
       status.deployed = await this.checkContractDeployed(contractAddress);
       status.buildVerified = await this.checkBuildVerified(contractAddress);
-      status.minted = await this.checkMintEvents(contractAddress);
-      status.soroswapPair = await this.checkSoroswapPair(contractAddress);
+      status.minted = await this.checkMintEvents(contractAddress, startLedger);
+      status.soroswapPair = await this.checkSoroswapPair(contractAddress, startLedger);
       status.soroswapLiquidity = await this.checkSoroswapLiquidity(
         contractAddress,
+        startLedger,
       );
-      status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress);
+      status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress, startLedger);
     } catch (error) {
       console.error("Error getting full contract status:", error);
     }
