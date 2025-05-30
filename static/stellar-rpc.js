@@ -29,7 +29,7 @@ class StellarRPCClient {
   constructor(rpcUrl = "https://soroban-testnet.stellar.org:443") {
     this.rpcUrl = rpcUrl;
     this.nativeAssetContract =
-      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAUHKENOWID"; // Native XLM contract on testnet
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"; // Native XLM contract on testnet
     this.soroswapFactoryContract =
       "CBVFAI4TEJCHIICFUYN2C5VYW5TD3CKPIZ4S5P5LVVUWMF5MRLJH77NH"; // Soroswap factory contract
   }
@@ -200,12 +200,8 @@ class StellarRPCClient {
 
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
-      console.log("latest ledger:", currentLedgerSequence);
 
-      // Calculate ledger sequence from 3 hours ago
-      const twoDaysAgoLedger = Math.max(1, currentLedgerSequence - 2160);
-
-      console.log("querying events since:", twoDaysAgoLedger);
+      const startLedger = Math.max(1, currentLedgerSequence - 2160); // 3 hours ago
 
       const mintSymbol = xdr.encode("ScVal", JSON.stringify({ symbol: "mint" }));
 
@@ -213,9 +209,9 @@ class StellarRPCClient {
         filters: [{
           type: "contract",
           contractIds: [contractAddress],
-          topics: [[mintSymbol, "*"]], // Mint event with any second field
+          topics: [[mintSymbol, "*"]],
         }],
-        startLedger: twoDaysAgoLedger,
+        startLedger,
         pagination: {
           limit: 100,
         },
@@ -231,49 +227,50 @@ class StellarRPCClient {
 
   async checkSoroswapPair(contractAddress) {
     try {
-      // TODO Check that the soroswap pair is deployed by calling get_pair on the soroswap factory.
-      return false
+      const xdr = await initializeStellarXdr();
+
+      const latestLedger = await this.makeRPCCall("getLatestLedger");
+      const currentLedgerSequence = latestLedger.sequence;
+
+      const startLedger = Math.max(1, currentLedgerSequence - 2160); // 3 hours ago
+
+      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapFactory" }));
+      const newPairTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "new_pair" }));
+
+      const result = await this.makeRPCCall("getEvents", {
+        filters: [{
+          type: "contract",
+          contractIds: [this.soroswapFactoryContract],
+          topics: [[soroswapTopic, newPairTopic]],
+        }],
+        startLedger,
+        pagination: {
+          limit: 100,
+        },
+      });
+      console.log("soroswap pair: getEvents result:", result);
+
+      let nativeMatched = false;
+      let tokenMatched = false;
+      for (const event of result.events) {
+        const valueJson = xdr.decode_stream("ScVal", event.value);
+        const value = JSON.parse(valueJson);
+        for (const mapEntry of value.map) {
+          if (mapEntry.key["symbol"] == "token_0" || mapEntry.key["symbol"] == "token_1") {
+            if (mapEntry.val["address"] == this.nativeAssetContract) {
+              nativeMatched = true;
+            }
+            if (mapEntry.val["address"] == contractAddress) {
+              tokenMatched = true;
+            }
+          }
+        }
+      }
+      return nativeMatched && tokenMatched;
     } catch (error) {
       console.error("Error checking Soroswap pair:", error);
       return false;
     }
-  }
-
-  buildGetPairTransactionJson(tokenAddress) {
-    // This builds a transaction JSON structure to call get_pair on the Soroswap factory
-    // For now, returning a simplified structure that would work with XDR encoding
-    return {
-      sourceAccount: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-      fee: 100,
-      seqNum: 1,
-      timeBounds: null,
-      memo: {
-        type: "none",
-      },
-      operations: [{
-        sourceAccount: null,
-        body: {
-          type: "invokeHostFunction",
-          invokeHostFunctionOp: {
-            hostFunction: {
-              type: "invokeContract",
-              invokeContract: {
-                contractAddress: this.soroswapFactoryContract,
-                functionName: "get_pair",
-                args: [
-                  { type: "address", address: tokenAddress },
-                  { type: "address", address: this.nativeAssetContract },
-                ],
-              },
-            },
-            auth: [],
-          },
-        },
-      }],
-      ext: {
-        v: 0,
-      },
-    };
   }
 
   async checkSoroswapSwapped(contractAddress) {
@@ -299,7 +296,7 @@ class StellarRPCClient {
       status.deployed = await this.checkContractDeployed(contractAddress);
       status.buildVerified = await this.checkBuildVerified(contractAddress);
       status.minted = await this.checkMintEvents(contractAddress);
-      //status.soroswapPair = await this.checkSoroswapPair(contractAddress);
+      status.soroswapPair = await this.checkSoroswapPair(contractAddress);
       //status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress);
     } catch (error) {
       console.error("Error getting full contract status:", error);
