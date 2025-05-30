@@ -142,15 +142,15 @@ header p {
 }
 
 .leaderboard-table th:not(:first-child) {
-  width: 120px;  /* Match status cell width */
+  width: 120px; /* Match status cell width */
   min-width: 120px;
   max-width: 120px;
-  text-align: center;  /* Center header text */
+  text-align: center; /* Center header text */
 }
 
 /* Add some visual separation between rows */
 .contract-row:hover {
-    background-color: #f8fafc;
+  background-color: #f8fafc;
 }
 
 .metric-header {
@@ -181,7 +181,6 @@ header p {
   padding: 20px 10px;
 }
 
-
 .remove-contract {
   background: #ef4444;
   color: white;
@@ -201,10 +200,10 @@ header p {
 .status-cell {
   font-size: 24px;
   vertical-align: middle;
-  width: 120px;  /* Fixed width for status cells */
-  min-width: 120px;  /* Ensure columns don't collapse */
-  max-width: 120px;  /* Maintain consistent width */
-  padding: 20px 5px;  /* Adjusted padding for fixed width */
+  width: 120px; /* Fixed width for status cells */
+  min-width: 120px; /* Ensure columns don't collapse */
+  max-width: 120px; /* Maintain consistent width */
+  padding: 20px 5px; /* Adjusted padding for fixed width */
   text-align: center;
 }
 
@@ -306,5 +305,4 @@ header p {
   .leaderboard-table td {
     padding: 12px 8px;
   }
-
 }

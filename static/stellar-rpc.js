@@ -78,15 +78,20 @@ class StellarRPCClient {
     try {
       const xdr = await initializeStellarXdr();
 
-      const keyXdr = xdr.encode("LedgerKey", JSON.stringify({
-        contract_data: {
-          contract: contractAddress,
-          key: "ledger_key_contract_instance",
-          durability: "persistent",
-        },
-      }));
+      const keyXdr = xdr.encode(
+        "LedgerKey",
+        JSON.stringify({
+          contract_data: {
+            contract: contractAddress,
+            key: "ledger_key_contract_instance",
+            durability: "persistent",
+          },
+        }),
+      );
 
-      const result = await this.makeRPCCall("getLedgerEntries", { keys: [keyXdr] });
+      const result = await this.makeRPCCall("getLedgerEntries", {
+        keys: [keyXdr],
+      });
 
       return result.entries && result.entries.length > 0;
     } catch (error) {
@@ -100,13 +105,16 @@ class StellarRPCClient {
     try {
       const xdr = await initializeStellarXdr();
 
-      const keyXdr = xdr.encode("LedgerKey", JSON.stringify({
-        contract_data: {
-          contract: contractAddress,
-          key: "ledger_key_contract_instance",
-          durability: "persistent",
-        },
-      }));
+      const keyXdr = xdr.encode(
+        "LedgerKey",
+        JSON.stringify({
+          contract_data: {
+            contract: contractAddress,
+            key: "ledger_key_contract_instance",
+            durability: "persistent",
+          },
+        }),
+      );
 
       const result = await this.makeRPCCall("getLedgerEntries", {
         keys: [keyXdr],
@@ -131,11 +139,14 @@ class StellarRPCClient {
     try {
       const xdr = await initializeStellarXdr();
 
-      const keyXdr = xdr.encode("LedgerKey", JSON.stringify({
-        contract_code: {
-          hash: wasmHash,
-        },
-      }));
+      const keyXdr = xdr.encode(
+        "LedgerKey",
+        JSON.stringify({
+          contract_code: {
+            hash: wasmHash,
+          },
+        }),
+      );
 
       const result = await this.makeRPCCall("getLedgerEntries", {
         keys: [keyXdr],
@@ -149,7 +160,7 @@ class StellarRPCClient {
       const code = JSON.parse(codeJson);
       const wasm = code.contract_code.code;
       console.log("wasm: ", wasm);
-      const bytes = wasm.match(/.{2}/g)?.map(b => parseInt(b, 16)) || [];
+      const bytes = wasm.match(/.{2}/g)?.map((b) => parseInt(b, 16)) || [];
       return new Uint8Array(bytes).buffer;
     } catch (error) {
       console.error("Error getting contract wasm:", error);
@@ -172,9 +183,17 @@ class StellarRPCClient {
       }
 
       const module = await WebAssembly.compile(wasm);
-      const sections = WebAssembly.Module.customSections(module, "contractmetav0");
+      const sections = WebAssembly.Module.customSections(
+        module,
+        "contractmetav0",
+      );
       for (const section of sections) {
-        const xdrbase64 = btoa(new Uint8Array(section).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        const xdrbase64 = btoa(
+          new Uint8Array(section).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
+        );
         const entriesJson = xdr.decode_stream("ScMetaEntry", xdrbase64);
         const entries = entriesJson.map((json) => JSON.parse(json));
         for (const entry of entries) {
@@ -184,7 +203,9 @@ class StellarRPCClient {
             if (source_repo.startsWith(prefix)) {
               const github_repo = source_repo.slice(prefix.length);
 
-              const resp = await fetch(`/attestation?repo=${github_repo}&hash=${wasmHash}`);
+              const resp = await fetch(
+                `/attestation?repo=${github_repo}&hash=${wasmHash}`,
+              );
               console.log(resp);
               return resp.status == 200;
             }
@@ -206,9 +227,15 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+      const startLedger = Math.max(
+        1,
+        currentLedgerSequence + startLedgerOffset,
+      );
 
-      const mintSymbol = xdr.encode("ScVal", JSON.stringify({ symbol: "mint" }));
+      const mintSymbol = xdr.encode(
+        "ScVal",
+        JSON.stringify({ symbol: "mint" }),
+      );
 
       // First RPC call with topic pattern [mintSymbol, "*"]
       const result1 = await this.makeRPCCall("getEvents", {
@@ -224,22 +251,22 @@ class StellarRPCClient {
       });
 
       // Second RPC call with topic pattern [mintSymbol, "*", "*"]
-        const result2 = await this.makeRPCCall("getEvents", {
-            filters: [{
-                type: "contract",
-                contractIds: [contractAddress],
-                topics: [[mintSymbol, "*", "*"]],
-            }],
-            startLedger,
-            pagination: {
-                limit: 100,
-            },
-        });
+      const result2 = await this.makeRPCCall("getEvents", {
+        filters: [{
+          type: "contract",
+          contractIds: [contractAddress],
+          topics: [[mintSymbol, "*", "*"]],
+        }],
+        startLedger,
+        pagination: {
+          limit: 100,
+        },
+      });
 
       console.log("getEvents result:", result1);
       console.log("getEvents result:", result2);
-      return (result1.events && result1.events.length > 0) || 
-               (result2.events && result2.events.length > 0);
+      return (result1.events && result1.events.length > 0) ||
+        (result2.events && result2.events.length > 0);
     } catch (error) {
       console.error("Error checking mint events:", error);
       return false; // Return false instead of throwing
@@ -253,10 +280,19 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+      const startLedger = Math.max(
+        1,
+        currentLedgerSequence + startLedgerOffset,
+      );
 
-      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapFactory" }));
-      const newPairTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "new_pair" }));
+      const soroswapTopic = xdr.encode(
+        "ScVal",
+        JSON.stringify({ string: "SoroswapFactory" }),
+      );
+      const newPairTopic = xdr.encode(
+        "ScVal",
+        JSON.stringify({ symbol: "new_pair" }),
+      );
 
       const result = await this.makeRPCCall("getEvents", {
         filters: [{
@@ -275,7 +311,10 @@ class StellarRPCClient {
         const valueJson = xdr.decode_stream("ScVal", event.value);
         const value = JSON.parse(valueJson);
         for (const mapEntry of value.map) {
-          if (mapEntry.key["symbol"] == "token_0" || mapEntry.key["symbol"] == "token_1") {
+          if (
+            mapEntry.key["symbol"] == "token_0" ||
+            mapEntry.key["symbol"] == "token_1"
+          ) {
             if (mapEntry.val["address"] == contractAddress) {
               return true;
             }
@@ -296,9 +335,15 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+      const startLedger = Math.max(
+        1,
+        currentLedgerSequence + startLedgerOffset,
+      );
 
-      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapRouter" }));
+      const soroswapTopic = xdr.encode(
+        "ScVal",
+        JSON.stringify({ string: "SoroswapRouter" }),
+      );
       const addTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "add" }));
 
       const result = await this.makeRPCCall("getEvents", {
@@ -318,7 +363,10 @@ class StellarRPCClient {
         const valueJson = xdr.decode_stream("ScVal", event.value);
         const value = JSON.parse(valueJson);
         for (const mapEntry of value.map) {
-          if (mapEntry.key["symbol"] == "token_a" || mapEntry.key["symbol"] == "token_b") {
+          if (
+            mapEntry.key["symbol"] == "token_a" ||
+            mapEntry.key["symbol"] == "token_b"
+          ) {
             if (mapEntry.val["address"] == contractAddress) {
               return true;
             }
@@ -339,9 +387,15 @@ class StellarRPCClient {
       const latestLedger = await this.makeRPCCall("getLatestLedger");
       const currentLedgerSequence = latestLedger.sequence;
 
-      const startLedger = Math.max(1, currentLedgerSequence + startLedgerOffset);
+      const startLedger = Math.max(
+        1,
+        currentLedgerSequence + startLedgerOffset,
+      );
 
-      const soroswapTopic = xdr.encode("ScVal", JSON.stringify({ string: "SoroswapRouter" }));
+      const soroswapTopic = xdr.encode(
+        "ScVal",
+        JSON.stringify({ string: "SoroswapRouter" }),
+      );
       const swapTopic = xdr.encode("ScVal", JSON.stringify({ symbol: "swap" }));
 
       const result = await this.makeRPCCall("getEvents", {
@@ -392,7 +446,9 @@ class StellarRPCClient {
       status.buildVerified = await this.checkBuildVerified(contractAddress);
       status.minted = await this.checkMintEvents(contractAddress);
       status.soroswapPair = await this.checkSoroswapPair(contractAddress);
-      status.soroswapLiquidity = await this.checkSoroswapLiquidity(contractAddress);
+      status.soroswapLiquidity = await this.checkSoroswapLiquidity(
+        contractAddress,
+      );
       status.soroswapSwapped = await this.checkSoroswapSwapped(contractAddress);
     } catch (error) {
       console.error("Error getting full contract status:", error);
