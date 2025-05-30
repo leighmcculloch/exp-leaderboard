@@ -48,7 +48,7 @@ class LeaderboardApp {
       /^[A-Z2-7]+$/.test(address);
   }
 
-  addContract(address) {
+  addContract(address, name = "") {
     if (!address) {
       alert("Please enter a contract address");
       return;
@@ -67,9 +67,13 @@ class LeaderboardApp {
       return;
     }
 
+    // Use name if provided, otherwise use shortened address
+    const contractName = name.trim() || this.shortenAddress(address);
+
     // Add new contract
     const newContract = {
       address: address,
+      name: contractName,
       shortAddress: this.shortenAddress(address),
       status: {
         deployed: null,
@@ -88,8 +92,9 @@ class LeaderboardApp {
     // Start checking the contract status
     this.updateContractStatus(address);
 
-    // Clear the input
+    // Clear the inputs
     document.getElementById("contractAddress").value = "";
+    document.getElementById("contractName").value = "";
   }
 
   removeContract(address) {
@@ -214,8 +219,8 @@ class LeaderboardApp {
       const th = document.createElement("th");
       th.className = "contract-header";
       th.innerHTML = `
-                <div>${contract.shortAddress}</div>
-                <div class="contract-address">${contract.address}</div>
+                <div class="contract-name">${contract.name}</div>
+                <div class="contract-address">${contract.shortAddress}</div>
                 <button class="remove-contract" onclick="app.removeContract('${contract.address}')">Remove</button>
             `;
       thead.appendChild(th);
@@ -259,22 +264,29 @@ class LeaderboardApp {
 
 // Global functions for HTML event handlers
 function addContract() {
-  const input = document.getElementById("contractAddress");
-  const address = input.value.trim().toUpperCase();
-  app.addContract(address);
+  const addressInput = document.getElementById("contractAddress");
+  const nameInput = document.getElementById("contractName");
+  const address = addressInput.value.trim().toUpperCase();
+  const name = nameInput.value.trim();
+  app.addContract(address, name);
 }
 
 // Make addContract available globally
 window.addContract = addContract;
 
-// Handle Enter key in the input field
+// Handle Enter key in the input fields
 document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("contractAddress");
-  input.addEventListener("keypress", (e) => {
+  const addressInput = document.getElementById("contractAddress");
+  const nameInput = document.getElementById("contractName");
+  
+  const handleEnter = (e) => {
     if (e.key === "Enter") {
       addContract();
     }
-  });
+  };
+  
+  addressInput.addEventListener("keypress", handleEnter);
+  nameInput.addEventListener("keypress", handleEnter);
 });
 
 // Initialize the app when the page loads
