@@ -220,7 +220,7 @@ class LeaderboardApp {
       th.className = "contract-header";
       th.innerHTML = `
                 <div class="contract-name">${contract.name}</div>
-                <div class="contract-address">${contract.shortAddress}</div>
+                <div class="contract-address">${contract.address}</div>
                 <button class="remove-contract" onclick="app.removeContract('${contract.address}')">Remove</button>
             `;
       thead.appendChild(th);
