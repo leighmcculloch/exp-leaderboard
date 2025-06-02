@@ -59,7 +59,6 @@ class StellarRPCClient {
       if (Object.keys(params).length > 0) {
         body["params"] = params;
       }
-
       const response = await fetch(this.rpcUrl, {
         method: "POST",
         headers: {
@@ -164,8 +163,6 @@ class StellarRPCClient {
       const result = await this.makeRPCCall("getLedgerEntries", {
         keys: [keyXdr],
       });
-
-      console.log("getLedgerEntries result:", result);
 
       return result.entries && result.entries.length > 0;
     } catch (error) {
