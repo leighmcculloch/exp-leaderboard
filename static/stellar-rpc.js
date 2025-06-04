@@ -40,6 +40,16 @@ class StellarRPCClient {
   }
 
   async makeRPCCall(method, params = {}) {
+        // For methods that don't need pagination, use the original implementation
+        if (method !== "getEvents") {
+            return this.makeSingleRPCCall(method, params);
+        }
+        
+        // For getEvents, use pagination
+        return this.makePaginatedRPCCall(method, params);
+    }
+
+  async makeSingleRPCCall(method, params = {}) {
     try {
       const body = {
         jsonrpc: "2.0",
@@ -73,6 +83,67 @@ class StellarRPCClient {
       throw error;
     }
   }
+
+  async makePaginatedRPCCall(method, params = {}) {
+    try {
+        let allResults = [];
+        let cursor = undefined;
+        let emptySetCount = 0;
+        const MAX_EMPTY_SETS = 5; // Stop after 5 consecutive empty sets
+
+        // Extract startLedger from initial params
+        const { startLedger, ...baseParams } = params;
+        
+        do {
+            // Only include startLedger in the first call
+            const currentParams = { ...baseParams };
+            if (!cursor && startLedger) {
+                currentParams.startLedger = startLedger;
+            }
+
+            // Add cursor to pagination if we have one
+            if (cursor) {
+                currentParams.pagination = {
+                    ...currentParams.pagination,
+                    cursor: cursor
+                };
+            }
+
+            // Make the RPC call
+            const result = await this.makeSingleRPCCall(method, currentParams);
+            
+            // Check if we got any events
+            if (result.events && result.events.length > 0) {
+                allResults = allResults.concat(result.events);
+                cursor = result.cursor;
+                emptySetCount = 0;
+                console.log(`Found ${result.events.length} events, next cursor: ${cursor}`);
+            } else {
+                emptySetCount++;  // Increment empty set counter
+                cursor = result.cursor;
+                console.log(`Empty set received (${emptySetCount}/${MAX_EMPTY_SETS}), next cursor: ${cursor}`);
+                // No more events, break the loop
+                if (emptySetCount >= MAX_EMPTY_SETS) {
+                    console.log('Reached maximum consecutive empty sets, stopping pagination');
+                    break;
+                }
+            }
+            
+            console.log(`Fetched ${allResults.length} events so far...`);
+            
+        } while (cursor); // Continue while we have a next cursor and events
+
+        // Return in same format as original API
+        return {
+            events: allResults,
+            pagination: { cursor: cursor }
+        };
+
+    } catch (error) {
+        console.error(`Error in paginated call to ${method}:`, error);
+        throw error;
+    }
+}
 
   async checkContractDeployed(contractAddress) {
     try {
@@ -230,7 +301,7 @@ class StellarRPCClient {
       );
 
       // First RPC call with topic pattern [mintSymbol, "*"]
-      const result1 = await this.makeRPCCall("getEvents", {
+      const result = await this.makeRPCCall("getEvents", {
         filters: [{
           type: "contract",
           contractIds: [contractAddress],
@@ -241,27 +312,12 @@ class StellarRPCClient {
         }],
         startLedger,
         pagination: {
-          limit: 100,
+          limit: 200,
         },
       });
 
-      // Second RPC call with topic pattern [mintSymbol, "*", "*"]
-      const result2 = await this.makeRPCCall("getEvents", {
-        filters: [{
-          type: "contract",
-          contractIds: [contractAddress],
-          topics: [[mintSymbol, "*", "*"]],
-        }],
-        startLedger,
-        pagination: {
-          limit: 100,
-        },
-      });
-
-      console.log("getEvents result:", result1);
-      console.log("getEvents result:", result2);
-      return (result1.events && result1.events.length > 0) ||
-        (result2.events && result2.events.length > 0);
+      console.log("getMintEvents result:", result);
+      return (result.events && result.events.length > 0);
     } catch (error) {
       console.error("Error checking mint events:", error);
       return false; // Return false instead of throwing
@@ -289,7 +345,7 @@ class StellarRPCClient {
         }],
         startLedger,
         pagination: {
-          limit: 100,
+          limit: 200,
         },
       });
       console.log("soroswap pair: getEvents result:", result);
@@ -333,7 +389,7 @@ class StellarRPCClient {
         }],
         startLedger,
         pagination: {
-          limit: 100,
+          limit: 200,
         },
       });
       console.log("soroswap liquidity: getEvents result:", result);
